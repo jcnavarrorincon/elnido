@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Model Health — Argentia</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f1117;
+      color: #e0e0e0;
+      min-height: 100vh;
+    }
+    .container { max-width: 900px; margin: 0 auto; padding: 32px 20px; }
+    h1 { font-size: 1.6rem; margin-bottom: 8px; color: #fff; }
+    h1 span { color: #526d52; }
+    .subtitle { color: #888; font-size: 0.9rem; margin-bottom: 32px; }
+
+    /* Config */
+    .config-section {
+      background: #1a1d27;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+    .config-section h2 { font-size: 1rem; color: #aaa; margin-bottom: 16px; }
+    .provider-card {
+      background: #22252f;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .provider-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .provider-name { font-weight: 700; font-size: 0.95rem; }
+    .provider-type { color: #666; font-size: 0.8rem; }
+    .field { margin-bottom: 8px; }
+    .field label { display: block; font-size: 0.78rem; color: #888; margin-bottom: 3px; }
+    .field input {
+      width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid #333;
+      background: #1a1d27; color: #e0e0e0; font-size: 0.85rem;
+    }
+    .field input:focus { outline: none; border-color: #526d52; }
+    .models-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .model-chip {
+      background: #2a2d37; border: 1px solid #3a3d47; border-radius: 16px;
+      padding: 4px 12px; font-size: 0.78rem; display: flex; align-items: center; gap: 6px;
+    }
+    .model-chip .remove { cursor: pointer; color: #666; font-size: 1rem; }
+    .model-chip .remove:hover { color: #e55; }
+    .add-model { display: flex; gap: 6px; margin-top: 8px; }
+    .add-model input { flex: 1; padding: 6px 10px; border-radius: 6px; border: 1px solid #333; background: #1a1d27; color: #e0e0e0; font-size: 0.8rem; }
+    .add-model button { padding: 6px 12px; border-radius: 6px; border: none; background: #526d52; color: #fff; cursor: pointer; font-size: 0.8rem; }
+    .btn-add-provider {
+      background: none; border: 1px dashed #444; border-radius: 8px; padding: 12px;
+      color: #888; cursor: pointer; width: 100%; font-size: 0.85rem; margin-top: 4px;
+    }
+    .btn-add-provider:hover { border-color: #526d52; color: #526d52; }
+    .remove-provider { background: none; border: none; color: #666; cursor: pointer; font-size: 0.85rem; }
+    .remove-provider:hover { color: #e55; }
+
+    /* Actions */
+    .actions { display: flex; gap: 10px; margin-bottom: 24px; }
+    .btn-test {
+      padding: 12px 28px; border-radius: 8px; border: none; cursor: pointer;
+      font-size: 0.95rem; font-weight: 700; transition: all 0.2s;
+    }
+    .btn-test-all { background: #526d52; color: #fff; }
+    .btn-test-all:hover { background: #6a9f60; transform: translateY(-1px); }
+    .btn-test-all:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-clear { background: #2a2d37; color: #aaa; border: 1px solid #333; }
+    .btn-clear:hover { background: #333; }
+
+    /* Results */
+    .results { margin-top: 12px; }
+    .result-card {
+      background: #1a1d27; border-radius: 10px; padding: 16px 20px;
+      margin-bottom: 10px; display: grid; grid-template-columns: 1fr auto auto;
+      align-items: center; gap: 12px; border-left: 4px solid #333;
+    }
+    .result-card.ok { border-left-color: #526d52; }
+    .result-card.fail { border-left-color: #c94444; }
+    .result-model { font-weight: 700; font-size: 0.95rem; }
+    .result-provider { color: #888; font-size: 0.78rem; }
+    .result-status {
+      padding: 4px 12px; border-radius: 16px; font-size: 0.78rem; font-weight: 600;
+    }
+    .result-status.ok { background: #1a3320; color: #6a9f60; }
+    .result-status.fail { background: #331a1a; color: #c94444; }
+    .result-time { font-family: monospace; font-size: 1.1rem; color: #ddd; }
+    .result-time.fast { color: #6a9f60; }
+    .result-time.medium { color: #d4a843; }
+    .result-time.slow { color: #c94444; }
+    .result-error { grid-column: 1 / -1; color: #c94444; font-size: 0.8rem; margin-top: 4px; }
+    .result-meta { grid-column: 1 / -1; display: flex; gap: 16px; font-size: 0.75rem; color: #666; margin-top: 4px; }
+
+    /* Summary */
+    .summary {
+      background: #1a1d27; border-radius: 10px; padding: 16px 20px;
+      margin-bottom: 16px; display: flex; gap: 24px; flex-wrap: wrap;
+    }
+    .summary-item { text-align: center; }
+    .summary-item .val { font-size: 1.4rem; font-weight: 800; }
+    .summary-item .label { font-size: 0.75rem; color: #888; }
+
+    /* Loading */
+    .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #333; border-top-color: #526d52; border-radius: 50%; animation: spin 0.6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      .result-card { grid-template-columns: 1fr; gap: 6px; }
+      .actions { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Model <span>Health</span></h1>
+    <p class="subtitle">Comprueba qué modelos están activos y su velocidad</p>
+
+    <!-- Config -->
+    <div class="config-section">
+      <h2>Proveedores configurados</h2>
+      <div id="providers"></div>
+      <button class="btn-add-provider" onclick="addProvider()">+ Añadir proveedor</button>
+    </div>
+
+    <!-- Actions -->
+    <div class="actions">
+      <button class="btn-test btn-test-all" id="btnTestAll" onclick="testAll()">🔍 Testear todos</button>
+      <button class="btn-test btn-clear" onclick="clearResults()">Limpiar</button>
+    </div>
+
+    <!-- Summary -->
+    <div class="summary" id="summary" style="display:none"></div>
+
+    <!-- Results -->
+    <div class="results" id="results"></div>
+  </div>
+
+  <script>
+    const PROVIDER_TYPES = ['ollama', 'opencode-go', 'anthropic', 'google'];
+    let providers = [];
+    let results = [];
+
+    // ── Init from config ──
+    async function init() {
+      const saved = localStorage.getItem('mh_providers');
+      if (saved) {
+        providers = JSON.parse(saved);
+      } else {
+        // Defaults from Aria config
+        providers = [
+          { id: 'opencode-go', baseUrl: 'https://ollama.com', apiKey: '', headerKey: 'Authorization', type: 'ollama',
+            models: [{ id: 'glm-5.1', name: 'GLM-5.1' }, { id: 'deepseek-v3.2', name: 'DeepSeek V3.2' }, { id: 'kimi-k2.5', name: 'Kimi K2.5' }] },
+          { id: 'anthropic', baseUrl: 'https://api.anthropic.com', apiKey: '', type: 'anthropic',
+            models: [{ id: 'claude-sonnet-4-6', name: 'Sonnet 4.6' }, { id: 'claude-haiku-4-5', name: 'Haiku 4.5' }] },
+          { id: 'google', baseUrl: 'https://generativelanguage.googleapis.com', apiKey: '', type: 'google',
+            models: [{ id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' }] },
+        ];
+      }
+      render();
+    }
+
+    function save() { localStorage.setItem('mh_providers', JSON.stringify(providers)); }
+
+    function render() {
+      const el = document.getElementById('providers');
+      el.innerHTML = providers.map((p, pi) => `
+        <div class="provider-card">
+          <div class="provider-header">
+            <div>
+              <span class="provider-name">${p.id}</span>
+              <span class="provider-type"> (${p.type})</span>
+            </div>
+            <button class="remove-provider" onclick="removeProvider(${pi})">✕</button>
+          </div>
+          <div class="field">
+            <label>Base URL</label>
+            <input value="${p.baseUrl}" onchange="providers[${pi}].baseUrl=this.value;save()">
+          </div>
+          <div class="field">
+            <label>API Key</label>
+            <input type="password" value="${p.apiKey}" placeholder="sk-..." onchange="providers[${pi}].apiKey=this.value;save()">
+          </div>
+          ${p.type === 'ollama' || p.type === 'opencode-go' ? `
+          <div class="field">
+            <label>Auth Header</label>
+            <input value="${p.headerKey || 'Authorization'}" onchange="providers[${pi}].headerKey=this.value;save()">
+          </div>` : ''}
+          <div class="models-row">
+            ${p.models.map((m, mi) => `
+              <span class="model-chip">${m.name || m.id} <span class="remove" onclick="removeModel(${pi},${mi})">×</span></span>
+            `).join('')}
+          </div>
+          <div class="add-model">
+            <input id="newModel${pi}" placeholder="model-id">
+            <button onclick="addModel(${pi})">+ Modelo</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function addProvider() {
+      const id = prompt('ID del proveedor (ej: opencode-go):');
+      if (!id) return;
+      const type = prompt('Tipo (ollama / anthropic / google):', 'ollama') || 'ollama';
+      providers.push({ id, baseUrl: '', apiKey: '', headerKey: 'Authorization', type, models: [] });
+      save(); render();
+    }
+
+    function removeProvider(pi) { providers.splice(pi, 1); save(); render(); }
+
+    function addModel(pi) {
+      const input = document.getElementById(`newModel${pi}`);
+      const id = input.value.trim();
+      if (!id) return;
+      providers[pi].models.push({ id, name: id });
+      input.value = '';
+      save(); render();
+    }
+
+    function removeModel(pi, mi) { providers[pi].models.splice(mi, 1); save(); render(); }
+
+    // ── Test all ──
+    async function testAll() {
+      const btn = document.getElementById('btnTestAll');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Testeando...';
+      results = [];
+
+      const allModels = [];
+      providers.forEach(p => {
+        p.models.forEach(m => {
+          allModels.push({
+            provider: p.id, providerType: p.type,
+            baseUrl: p.baseUrl, apiKey: p.apiKey, headerKey: p.headerKey,
+            models: [m]
+          });
+        });
+      });
+
+      // Test sequentially to avoid rate limits
+      for (const item of allModels) {
+        const model = item.models[0];
+        const start = Date.now();
+        try {
+          const payload = buildPayload(item.providerType, model.id);
+          const res = await fetch('/api/test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              provider: item.providerType, baseUrl: item.baseUrl,
+              apiKey: item.apiKey, headerKey: item.headerKey,
+              model: model.id
+            })
+          });
+          const r = await res.json();
+          r.name = model.name || model.id;
+          r.providerId = item.provider;
+          results.push(r);
+        } catch (e) {
+          results.push({ ok: false, model: model.id, name: model.name || model.id, provider: item.provider, elapsed: Date.now() - start, error: e.message, timestamp: new Date().toISOString() });
+        }
+        renderResults();
+      }
+
+      btn.disabled = false;
+      btn.innerHTML = '🔍 Testear todos';
+      showSummary();
+    }
+
+    function buildPayload(provider, model) {
+      const messages = [{ role: 'user', content: 'Responde solo "OK"' }];
+      if (provider === 'anthropic') return { model, max_tokens: 10, messages };
+      if (provider === 'google') return { model, max_tokens: 10, messages };
+      return { model, messages, max_tokens: 10, stream: false };
+    }
+
+    function renderResults() {
+      const el = document.getElementById('results');
+      el.innerHTML = results.map(r => {
+        const timeClass = r.elapsed < 5000 ? 'fast' : r.elapsed < 15000 ? 'medium' : 'slow';
+        return `
+          <div class="result-card ${r.ok ? 'ok' : 'fail'}">
+            <div>
+              <div class="result-model">${r.name || r.model}</div>
+              <div class="result-provider">${r.providerId || r.provider}</div>
+              ${r.error ? `<div class="result-error">${r.error}</div>` : ''}
+              <div class="result-meta">
+                <span>${r.timestamp ? new Date(r.timestamp).toLocaleTimeString() : ''}</span>
+                ${r.tokens ? `<span>In: ${r.tokens.input_tokens || '?'} Out: ${r.tokens.output_tokens || '?'}</span>` : ''}
+                <span>HTTP ${r.status || '—'}</span>
+              </div>
+            </div>
+            <span class="result-status ${r.ok ? 'ok' : 'fail'}">${r.ok ? '✓ OK' : '✕ Fail'}</span>
+            <span class="result-time ${timeClass}">${(r.elapsed / 1000).toFixed(1)}s</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function showSummary() {
+      const ok = results.filter(r => r.ok);
+      const fail = results.filter(r => !r.ok);
+      const avg = ok.length ? Math.round(ok.reduce((s, r) => s + r.elapsed, 0) / ok.length) : 0;
+      const fastest = ok.length ? ok.reduce((a, b) => a.elapsed < b.elapsed ? a : b) : null;
+      const el = document.getElementById('summary');
+      el.style.display = 'flex';
+      el.innerHTML = `
+        <div class="summary-item"><div class="val" style="color:#6a9f60">${ok.length}</div><div class="label">OK</div></div>
+        <div class="summary-item"><div class="val" style="color:#c94444">${fail.length}</div><div class="label">Fail</div></div>
+        <div class="summary-item"><div class="val" style="color:#d4a843">${(avg/1000).toFixed(1)}s</div><div class="label">Media</div></div>
+        <div class="summary-item"><div class="val" style="color:#6a9f60">${fastest ? (fastest.elapsed/1000).toFixed(1)+'s' : '—'}</div><div class="label">Más rápido</div></div>
+        ${fastest ? `<div class="summary-item"><div class="val" style="color:#6a9f60;font-size:0.9rem">${fastest.name || fastest.model}</div><div class="label">Modelo</div></div>` : ''}
+      `;
+    }
+
+    function clearResults() {
+      results = [];
+      document.getElementById('results').innerHTML = '';
+      document.getElementById('summary').style.display = 'none';
+    }
+
+    init();
+  </script>
+</body>
+</html>
