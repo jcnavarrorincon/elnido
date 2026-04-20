@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Argentia Dashboard</title>
+  <!-- v2026-04-19b -->
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f1117;
+      color: #e0e0e0;
+      min-height: 100vh;
+    }
+    .container { max-width: 900px; margin: 0 auto; padding: 32px 20px; }
+    h1 { font-size: 1.6rem; margin-bottom: 8px; color: #fff; }
+    h1 span { color: #526d52; }
+    .subtitle { color: #888; font-size: 0.9rem; margin-bottom: 32px; }
+
+    /* Config */
+    .config-section {
+      background: #1a1d27;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+    .config-section h2 { font-size: 1rem; color: #aaa; margin-bottom: 16px; }
+    .provider-card {
+      background: #22252f;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .provider-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .provider-name { font-weight: 700; font-size: 0.95rem; }
+    .provider-type { color: #666; font-size: 0.8rem; }
+    .field { margin-bottom: 8px; }
+    .field label { display: block; font-size: 0.78rem; color: #888; margin-bottom: 3px; }
+    .field input {
+      width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid #333;
+      background: #1a1d27; color: #e0e0e0; font-size: 0.85rem;
+    }
+    .field input:focus { outline: none; border-color: #526d52; }
+    .models-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .model-chip {
+      background: #2a2d37; border: 1px solid #3a3d47; border-radius: 16px;
+      padding: 4px 12px; font-size: 0.78rem; display: flex; align-items: center; gap: 6px;
+    }
+    .model-chip .remove { cursor: pointer; color: #666; font-size: 1rem; }
+    .model-chip .remove:hover { color: #e55; }
+    .add-model { display: flex; gap: 6px; margin-top: 8px; }
+    .add-model input { flex: 1; padding: 6px 10px; border-radius: 6px; border: 1px solid #333; background: #1a1d27; color: #e0e0e0; font-size: 0.8rem; }
+    .add-model button { padding: 6px 12px; border-radius: 6px; border: none; background: #526d52; color: #fff; cursor: pointer; font-size: 0.8rem; }
+    .btn-add-provider {
+      background: none; border: 1px dashed #444; border-radius: 8px; padding: 12px;
+      color: #888; cursor: pointer; width: 100%; font-size: 0.85rem; margin-top: 4px;
+    }
+    .btn-add-provider:hover { border-color: #526d52; color: #526d52; }
+    .remove-provider { background: none; border: none; color: #666; cursor: pointer; font-size: 0.85rem; }
+    .remove-provider:hover { color: #e55; }
+
+    /* Actions */
+    .actions { display: flex; gap: 10px; margin-bottom: 24px; }
+    .btn-test {
+      padding: 12px 28px; border-radius: 8px; border: none; cursor: pointer;
+      font-size: 0.95rem; font-weight: 700; transition: all 0.2s;
+    }
+    .btn-test-all { background: #526d52; color: #fff; }
+    .btn-test-all:hover { background: #6a9f60; transform: translateY(-1px); }
+    .btn-test-all:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-clear { background: #2a2d37; color: #aaa; border: 1px solid #333; }
+    .btn-clear:hover { background: #333; }
+
+    /* Results */
+    .results { margin-top: 12px; }
+    .result-card {
+      background: #1a1d27; border-radius: 10px; padding: 16px 20px;
+      margin-bottom: 10px; display: grid; grid-template-columns: 1fr auto auto;
+      align-items: center; gap: 12px; border-left: 4px solid #333;
+    }
+    .result-card.ok { border-left-color: #526d52; }
+    .result-card.fail { border-left-color: #c94444; }
+    .result-model { font-weight: 700; font-size: 0.95rem; }
+    .result-provider { color: #888; font-size: 0.78rem; }
+    .result-status {
+      padding: 4px 12px; border-radius: 16px; font-size: 0.78rem; font-weight: 600;
+    }
+    .result-status.ok { background: #1a3320; color: #6a9f60; }
+    .result-status.fail { background: #331a1a; color: #c94444; }
+    .result-time { font-family: monospace; font-size: 1.1rem; color: #ddd; }
+    .result-time.fast { color: #6a9f60; }
+    .result-time.medium { color: #d4a843; }
+    .result-time.slow { color: #c94444; }
+    .result-error { grid-column: 1 / -1; color: #c94444; font-size: 0.8rem; margin-top: 4px; }
+    .result-meta { grid-column: 1 / -1; display: flex; gap: 16px; font-size: 0.75rem; color: #666; margin-top: 4px; }
+
+    /* Summary */
+    .summary {
+      background: #1a1d27; border-radius: 10px; padding: 16px 20px;
+      margin-bottom: 16px; display: flex; gap: 24px; flex-wrap: wrap;
+    }
+    .summary-item { text-align: center; }
+    .summary-item .val { font-size: 1.4rem; font-weight: 800; }
+    .summary-item .label { font-size: 0.75rem; color: #888; }
+
+    /* Loading */
+    .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #333; border-top-color: #526d52; border-radius: 50%; animation: spin 0.6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 0; margin-bottom: 24px; border-bottom: 2px solid #222; }
+    .tab { padding: 10px 20px; cursor: pointer; font-size: 0.9rem; color: #888; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+    .tab:hover { color: #ccc; }
+    .tab.active { color: #6a9f60; border-bottom-color: #6a9f60; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* File explorer */
+    .file-breadcrumb { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; font-size: 0.85rem; }
+    .file-breadcrumb span { color: #888; }
+    .file-breadcrumb a { color: #6a9f60; cursor: pointer; text-decoration: none; }
+    .file-breadcrumb a:hover { text-decoration: underline; }
+    .file-list { background: #1a1d27; border-radius: 10px; overflow: hidden; }
+    .file-row { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; padding: 10px 16px; align-items: center; border-bottom: 1px solid #22252f; cursor: pointer; transition: background 0.15s; }
+    .file-row:hover { background: #22252f; }
+    .file-row:last-child { border-bottom: none; }
+    .file-icon { font-size: 1.1rem; }
+    .file-icon.dir { color: #d4a843; }
+    .file-icon.file { color: #888; }
+    .file-name { font-size: 0.88rem; }
+    .file-name.dir { font-weight: 600; color: #e0e0e0; }
+    .file-name.file { color: #aaa; }
+    .file-size { font-size: 0.75rem; color: #666; font-family: monospace; }
+    .file-viewer { background: #1a1d27; border-radius: 10px; padding: 16px; margin-top: 16px; }
+    .file-viewer pre { white-space: pre-wrap; word-break: break-all; font-size: 0.8rem; color: #ccc; max-height: 60vh; overflow-y: auto; }
+    .file-viewer-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .file-viewer-header span { color: #888; font-size: 0.8rem; }
+    .btn-back { background: #2a2d37; border: 1px solid #333; color: #aaa; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; }
+    .btn-back:hover { background: #333; }
+
+    /* System info */
+    .sys-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+    .sys-card { background: #1a1d27; border-radius: 10px; padding: 20px; text-align: center; }
+    .sys-card .val { font-size: 1.8rem; font-weight: 800; margin-bottom: 4px; }
+    .sys-card .label { font-size: 0.8rem; color: #888; }
+    .sys-bar { height: 6px; background: #22252f; border-radius: 3px; margin-top: 10px; overflow: hidden; }
+    .sys-bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      .result-card { grid-template-columns: 1fr; gap: 6px; }
+      .actions { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Argentia <span>Dashboard</span></h1>
+    <p class="subtitle">Modelos · Archivos · Sistema</p>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('models')">🔍 Modelos</div>
+      <div class="tab" onclick="switchTab('files')">📁 Archivos</div>
+      <div class="tab" onclick="switchTab('system')">💻 Sistema</div>
+    </div>
+
+    <!-- Tab: Models -->
+    <div class="tab-content active" id="tab-models">
+
+    <!-- Config -->
+    <div class="config-section">
+      <h2>Proveedores configurados</h2>
+      <div id="providers"></div>
+      <button class="btn-add-provider" onclick="addProvider()">+ Añadir proveedor</button>
+    </div>
+
+    <!-- Actions -->
+    <div class="actions">
+      <button class="btn-test btn-test-all" id="btnTestAll" onclick="testAll()">🔍 Testear todos</button>
+      <button class="btn-test btn-clear" onclick="clearResults()">Limpiar</button>
+    </div>
+
+    <!-- Summary -->
+    <div class="summary" id="summary" style="display:none"></div>
+
+    <!-- Results -->
+    <div class="results" id="results"></div>
+    </div>
+
+    <!-- Tab: Files -->
+    <div class="tab-content" id="tab-files">
+      <div class="config-section">
+        <h2>Explorador de archivos</h2>
+        <div class="file-breadcrumb" id="breadcrumb"></div>
+        <div class="file-list" id="fileList"></div>
+        <div class="file-viewer" id="fileViewer" style="display:none">
+          <div class="file-viewer-header">
+            <span id="viewerPath"></span>
+            <button class="btn-back" onclick="closeViewer()">← Volver</button>
+          </div>
+          <pre id="viewerContent"></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: System -->
+    <div class="tab-content" id="tab-system">
+      <div class="config-section">
+        <h2>Estado del sistema</h2>
+        <div class="sys-grid" id="sysGrid"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const PROVIDER_TYPES = ['ollama', 'opencode-go', 'anthropic', 'google'];
+    let providers = [];
+    let results = [];
+
+    // ── Init from config ──
+    async function init() {
+      const saved = localStorage.getItem('mh_providers');
+      if (saved) {
+        providers = JSON.parse(saved);
+      } else {
+        // Defaults from Aria config
+        providers = [
+          { id: 'opencode-go', baseUrl: 'https://ollama.com', apiKey: '', headerKey: 'Authorization', type: 'ollama',
+            models: [{ id: 'glm-5.1', name: 'GLM-5.1' }, { id: 'deepseek-v3.2', name: 'DeepSeek V3.2' }, { id: 'kimi-k2.5', name: 'Kimi K2.5' }] },
+          { id: 'anthropic', baseUrl: 'https://api.anthropic.com', apiKey: '', type: 'anthropic',
+            models: [{ id: 'claude-sonnet-4-6', name: 'Sonnet 4.6' }, { id: 'claude-haiku-4-5', name: 'Haiku 4.5' }] },
+          { id: 'google', baseUrl: 'https://generativelanguage.googleapis.com', apiKey: '', type: 'google',
+            models: [{ id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' }] },
+        ];
+      }
+      render();
+    }
+
+    function save() { localStorage.setItem('mh_providers', JSON.stringify(providers)); }
+
+    function render() {
+      const el = document.getElementById('providers');
+      el.innerHTML = providers.map((p, pi) => `
+        <div class="provider-card">
+          <div class="provider-header">
+            <div>
+              <span class="provider-name">${p.id}</span>
+              <span class="provider-type"> (${p.type})</span>
+            </div>
+            <button class="remove-provider" onclick="removeProvider(${pi})">✕</button>
+          </div>
+          <div class="field">
+            <label>Base URL</label>
+            <input value="${p.baseUrl}" onchange="providers[${pi}].baseUrl=this.value;save()">
+          </div>
+          <div class="field">
+            <label>API Key</label>
+            <input type="password" value="${p.apiKey}" placeholder="sk-..." onchange="providers[${pi}].apiKey=this.value;save()">
+          </div>
+          ${p.type === 'ollama' || p.type === 'opencode-go' ? `
+          <div class="field">
+            <label>Auth Header</label>
+            <input value="${p.headerKey || 'Authorization'}" onchange="providers[${pi}].headerKey=this.value;save()">
+          </div>` : ''}
+          <div class="models-row">
+            ${p.models.map((m, mi) => `
+              <span class="model-chip">${m.name || m.id} <span class="remove" onclick="removeModel(${pi},${mi})">×</span></span>
+            `).join('')}
+          </div>
+          <div class="add-model">
+            <input id="newModel${pi}" placeholder="model-id">
+            <button onclick="addModel(${pi})">+ Modelo</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function addProvider() {
+      const id = prompt('ID del proveedor (ej: opencode-go):');
+      if (!id) return;
+      const type = prompt('Tipo (ollama / anthropic / google):', 'ollama') || 'ollama';
+      providers.push({ id, baseUrl: '', apiKey: '', headerKey: 'Authorization', type, models: [] });
+      save(); render();
+    }
+
+    function removeProvider(pi) { providers.splice(pi, 1); save(); render(); }
+
+    function addModel(pi) {
+      const input = document.getElementById(`newModel${pi}`);
+      const id = input.value.trim();
+      if (!id) return;
+      providers[pi].models.push({ id, name: id });
+      input.value = '';
+      save(); render();
+    }
+
+    function removeModel(pi, mi) { providers[pi].models.splice(mi, 1); save(); render(); }
+
+    // ── Test all ──
+    async function testAll() {
+      const btn = document.getElementById('btnTestAll');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Testeando...';
+      results = [];
+
+      const allModels = [];
+      providers.forEach(p => {
+        p.models.forEach(m => {
+          allModels.push({
+            provider: p.id, providerType: p.type,
+            baseUrl: p.baseUrl, apiKey: p.apiKey, headerKey: p.headerKey,
+            models: [m]
+          });
+        });
+      });
+
+      // Test sequentially to avoid rate limits
+      for (const item of allModels) {
+        const model = item.models[0];
+        const start = Date.now();
+        try {
+          const payload = buildPayload(item.providerType, model.id);
+          const res = await fetch('/api/test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              provider: item.providerType, baseUrl: item.baseUrl,
+              apiKey: item.apiKey, headerKey: item.headerKey,
+              model: model.id
+            })
+          });
+          const r = await res.json();
+          r.name = model.name || model.id;
+          r.providerId = item.provider;
+          results.push(r);
+        } catch (e) {
+          results.push({ ok: false, model: model.id, name: model.name || model.id, provider: item.provider, elapsed: Date.now() - start, error: e.message, timestamp: new Date().toISOString() });
+        }
+        renderResults();
+      }
+
+      btn.disabled = false;
+      btn.innerHTML = '🔍 Testear todos';
+      showSummary();
+    }
+
+    function buildPayload(provider, model) {
+      const messages = [{ role: 'user', content: 'Responde solo "OK"' }];
+      if (provider === 'anthropic') return { model, max_tokens: 10, messages };
+      if (provider === 'google') return { model, max_tokens: 10, messages };
+      return { model, messages, max_tokens: 10, stream: false };
+    }
+
+    function renderResults() {
+      const el = document.getElementById('results');
+      el.innerHTML = results.map(r => {
+        const timeClass = r.elapsed < 5000 ? 'fast' : r.elapsed < 15000 ? 'medium' : 'slow';
+        return `
+          <div class="result-card ${r.ok ? 'ok' : 'fail'}">
+            <div>
+              <div class="result-model">${r.name || r.model}</div>
+              <div class="result-provider">${r.providerId || r.provider}</div>
+              ${r.error ? `<div class="result-error">${r.error}</div>` : ''}
+              <div class="result-meta">
+                <span>${r.timestamp ? new Date(r.timestamp).toLocaleTimeString() : ''}</span>
+                ${r.tokens ? `<span>In: ${r.tokens.input_tokens || '?'} Out: ${r.tokens.output_tokens || '?'}</span>` : ''}
+                <span>HTTP ${r.status || '—'}</span>
+              </div>
+            </div>
+            <span class="result-status ${r.ok ? 'ok' : 'fail'}">${r.ok ? '✓ OK' : '✕ Fail'}</span>
+            <span class="result-time ${timeClass}">${(r.elapsed / 1000).toFixed(1)}s</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function showSummary() {
+      const ok = results.filter(r => r.ok);
+      const fail = results.filter(r => !r.ok);
+      const avg = ok.length ? Math.round(ok.reduce((s, r) => s + r.elapsed, 0) / ok.length) : 0;
+      const fastest = ok.length ? ok.reduce((a, b) => a.elapsed < b.elapsed ? a : b) : null;
+      const el = document.getElementById('summary');
+      el.style.display = 'flex';
+      el.innerHTML = `
+        <div class="summary-item"><div class="val" style="color:#6a9f60">${ok.length}</div><div class="label">OK</div></div>
+        <div class="summary-item"><div class="val" style="color:#c94444">${fail.length}</div><div class="label">Fail</div></div>
+        <div class="summary-item"><div class="val" style="color:#d4a843">${(avg/1000).toFixed(1)}s</div><div class="label">Media</div></div>
+        <div class="summary-item"><div class="val" style="color:#6a9f60">${fastest ? (fastest.elapsed/1000).toFixed(1)+'s' : '—'}</div><div class="label">Más rápido</div></div>
+        ${fastest ? `<div class="summary-item"><div class="val" style="color:#6a9f60;font-size:0.9rem">${fastest.name || fastest.model}</div><div class="label">Modelo</div></div>` : ''}
+      `;
+    }
+
+    function clearResults() {
+      results = [];
+      document.getElementById('results').innerHTML = '';
+      document.getElementById('summary').style.display = 'none';
+    }
+
+    init();
+  </script>
+  <script>
+    function switchTab(name) {
+      var tabs = document.querySelectorAll('.tab');
+      var names = ['models','files','system'];
+      for (var i = 0; i < tabs.length; i++) {
+        tabs[i].classList.toggle('active', names[i] === name);
+      }
+      var contents = document.querySelectorAll('.tab-content');
+      for (var j = 0; j < contents.length; j++) {
+        contents[j].classList.remove('active');
+      }
+      document.getElementById('tab-' + name).classList.add('active');
+      if (name === 'files') loadDir('/home');
+      if (name === 'system') loadSystem();
+    }
+    function loadDir(dir) {
+      closeViewer();
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', '/api/files?dir=' + encodeURIComponent(dir), true);
+      xhr.onload = function() {
+        var data = JSON.parse(xhr.responseText);
+        if (data.error) { alert(data.error); return; }
+        var parts = data.dir.split('/').filter(Boolean);
+        var pathSoFar = '';
+        var bc = document.getElementById('breadcrumb');
+        var bcHtml = '<a onclick="loadDir(\'/\')" style="cursor:pointer;color:#6a9f60">/</a>';
+        for (var k = 0; k < parts.length; k++) {
+          pathSoFar += '/' + parts[k];
+          bcHtml += '<span style="color:#888">/</span><a onclick="loadDir(\'' + pathSoFar + '\')" style="cursor:pointer;color:#6a9f60">' + parts[k] + '</a>';
+        }
+        bc.innerHTML = bcHtml;
+        var fl = document.getElementById('fileList');
+        if (!data.items.length) {
+          fl.innerHTML = '<div style="padding:20px;color:#666;text-align:center">Directorio vacio</div>';
+          return;
+        }
+        var html = '';
+        if (data.dir !== '/') {
+          html += '<div class="file-row" onclick="loadDir(\'' + data.parent + '\')"><span class="file-icon dir">📁</span><span class="file-name dir">..</span><span class="file-size"></span></div>';
+        }
+        for (var m = 0; m < data.items.length; m++) {
+          var it = data.items[m];
+          var action = it.type === 'dir' ? 'loadDir(\'' + it.path + '\')' : 'viewFile(\'' + it.path + '\')';
+          var icon = it.type === 'dir' ? '📁' : '📄';
+          html += '<div class="file-row" onclick="' + action + '"><span class="file-icon ' + it.type + '">' + icon + '</span><span class="file-name ' + it.type + '">' + it.name + '</span><span class="file-size"></span></div>';
+        }
+        fl.innerHTML = html;
+      };
+      xhr.send();
+    }
+    function viewFile(path) {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', '/api/file?path=' + encodeURIComponent(path), true);
+      xhr.onload = function() {
+        var data = JSON.parse(xhr.responseText);
+        if (data.error) { alert(data.error); return; }
+        document.getElementById('fileViewer').style.display = 'block';
+        document.getElementById('viewerPath').textContent = data.path + ' (' + (data.size/1024).toFixed(1) + ' KB)';
+        document.getElementById('viewerContent').textContent = data.content;
+        document.getElementById('fileList').style.display = 'none';
+        document.getElementById('breadcrumb').style.display = 'none';
+      };
+      xhr.send();
+    }
+    function closeViewer() {
+      document.getElementById('fileViewer').style.display = 'none';
+      document.getElementById('fileList').style.display = '';
+      document.getElementById('breadcrumb').style.display = '';
+    }
+    function loadSystem() {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', '/api/disk', true);
+      xhr.onload = function() {
+        var data = JSON.parse(xhr.responseText);
+        var grid = document.getElementById('sysGrid');
+        var cards = '';
+        if (data.disk) {
+          var pct = parseInt(data.disk.percent);
+          var bg = pct > 80 ? '#c94444' : pct > 60 ? '#d4a843' : '#6a9f60';
+          cards += '<div class="sys-card"><div class="val" style="color:#6a9f60">' + data.disk.percent + '</div><div class="label">Disco usado</div><div class="sys-bar"><div class="sys-bar-fill" style="width:' + pct + '%;background:' + bg + '"></div></div><div style="margin-top:8px;font-size:0.75rem;color:#888">' + data.disk.used + ' / ' + data.disk.total + '</div></div>';
+        }
+        if (data.ram) {
+          var pct2 = parseInt(data.ram.percent);
+          var bg2 = pct2 > 80 ? '#c94444' : pct2 > 60 ? '#d4a843' : '#6a9f60';
+          cards += '<div class="sys-card"><div class="val" style="color:#d4a843">' + data.ram.percent + '</div><div class="label">RAM usada</div><div class="sys-bar"><div class="sys-bar-fill" style="width:' + pct2 + '%;background:' + bg2 + '"></div></div><div style="margin-top:8px;font-size:0.75rem;color:#888">' + data.ram.used + ' / ' + data.ram.total + '</div></div>';
+        }
+        cards += '<div class="sys-card"><div class="val" style="color:#6a9f60">' + (data.uptime || '--') + '</div><div class="label">Uptime</div></div>';
+        if (data.disk) cards += '<div class="sys-card"><div class="val" style="color:#6a9f60">' + data.disk.avail + '</div><div class="label">Disco libre</div></div>';
+        if (data.ram) cards += '<div class="sys-card"><div class="val" style="color:#6a9f60">' + data.ram.free + '</div><div class="label">RAM libre</div></div>';
+        grid.innerHTML = cards;
+      };
+      xhr.send();
+    }
+  </script>
+
+</body>
+</html>
