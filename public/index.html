@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Model Health — Argentia</title>
+  <title>Argentia Dashboard</title>
+  <!-- v2026-04-19b -->
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -110,6 +111,45 @@
     .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #333; border-top-color: #526d52; border-radius: 50%; animation: spin 0.6s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* Tabs */
+    .tabs { display: flex; gap: 0; margin-bottom: 24px; border-bottom: 2px solid #222; }
+    .tab { padding: 10px 20px; cursor: pointer; font-size: 0.9rem; color: #888; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+    .tab:hover { color: #ccc; }
+    .tab.active { color: #6a9f60; border-bottom-color: #6a9f60; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* File explorer */
+    .file-breadcrumb { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; font-size: 0.85rem; }
+    .file-breadcrumb span { color: #888; }
+    .file-breadcrumb a { color: #6a9f60; cursor: pointer; text-decoration: none; }
+    .file-breadcrumb a:hover { text-decoration: underline; }
+    .file-list { background: #1a1d27; border-radius: 10px; overflow: hidden; }
+    .file-row { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; padding: 10px 16px; align-items: center; border-bottom: 1px solid #22252f; cursor: pointer; transition: background 0.15s; }
+    .file-row:hover { background: #22252f; }
+    .file-row:last-child { border-bottom: none; }
+    .file-icon { font-size: 1.1rem; }
+    .file-icon.dir { color: #d4a843; }
+    .file-icon.file { color: #888; }
+    .file-name { font-size: 0.88rem; }
+    .file-name.dir { font-weight: 600; color: #e0e0e0; }
+    .file-name.file { color: #aaa; }
+    .file-size { font-size: 0.75rem; color: #666; font-family: monospace; }
+    .file-viewer { background: #1a1d27; border-radius: 10px; padding: 16px; margin-top: 16px; }
+    .file-viewer pre { white-space: pre-wrap; word-break: break-all; font-size: 0.8rem; color: #ccc; max-height: 60vh; overflow-y: auto; }
+    .file-viewer-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .file-viewer-header span { color: #888; font-size: 0.8rem; }
+    .btn-back { background: #2a2d37; border: 1px solid #333; color: #aaa; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; }
+    .btn-back:hover { background: #333; }
+
+    /* System info */
+    .sys-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+    .sys-card { background: #1a1d27; border-radius: 10px; padding: 20px; text-align: center; }
+    .sys-card .val { font-size: 1.8rem; font-weight: 800; margin-bottom: 4px; }
+    .sys-card .label { font-size: 0.8rem; color: #888; }
+    .sys-bar { height: 6px; background: #22252f; border-radius: 3px; margin-top: 10px; overflow: hidden; }
+    .sys-bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
+
     /* Responsive */
     @media (max-width: 600px) {
       .result-card { grid-template-columns: 1fr; gap: 6px; }
@@ -119,8 +159,18 @@
 </head>
 <body>
   <div class="container">
-    <h1>Model <span>Health</span></h1>
-    <p class="subtitle">Comprueba qué modelos están activos y su velocidad</p>
+    <h1>Argentia <span>Dashboard</span></h1>
+    <p class="subtitle">Modelos · Archivos · Sistema</p>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('models')">🔍 Modelos</div>
+      <div class="tab" onclick="switchTab('files')">📁 Archivos</div>
+      <div class="tab" onclick="switchTab('system')">💻 Sistema</div>
+    </div>
+
+    <!-- Tab: Models -->
+    <div class="tab-content active" id="tab-models">
 
     <!-- Config -->
     <div class="config-section">
@@ -140,6 +190,31 @@
 
     <!-- Results -->
     <div class="results" id="results"></div>
+    </div>
+
+    <!-- Tab: Files -->
+    <div class="tab-content" id="tab-files">
+      <div class="config-section">
+        <h2>Explorador de archivos</h2>
+        <div class="file-breadcrumb" id="breadcrumb"></div>
+        <div class="file-list" id="fileList"></div>
+        <div class="file-viewer" id="fileViewer" style="display:none">
+          <div class="file-viewer-header">
+            <span id="viewerPath"></span>
+            <button class="btn-back" onclick="closeViewer()">← Volver</button>
+          </div>
+          <pre id="viewerContent"></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: System -->
+    <div class="tab-content" id="tab-system">
+      <div class="config-section">
+        <h2>Estado del sistema</h2>
+        <div class="sys-grid" id="sysGrid"></div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -328,5 +403,100 @@
 
     init();
   </script>
+  <script>
+    function switchTab(name) {
+      var tabs = document.querySelectorAll('.tab');
+      var names = ['models','files','system'];
+      for (var i = 0; i < tabs.length; i++) {
+        tabs[i].classList.toggle('active', names[i] === name);
+      }
+      var contents = document.querySelectorAll('.tab-content');
+      for (var j = 0; j < contents.length; j++) {
+        contents[j].classList.remove('active');
+      }
+      document.getElementById('tab-' + name).classList.add('active');
+      if (name === 'files') loadDir('/home');
+      if (name === 'system') loadSystem();
+    }
+    function loadDir(dir) {
+      closeViewer();
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', '/api/files?dir=' + encodeURIComponent(dir), true);
+      xhr.onload = function() {
+        var data = JSON.parse(xhr.responseText);
+        if (data.error) { alert(data.error); return; }
+        var parts = data.dir.split('/').filter(Boolean);
+        var pathSoFar = '';
+        var bc = document.getElementById('breadcrumb');
+        var bcHtml = '<a onclick="loadDir(\'/\')" style="cursor:pointer;color:#6a9f60">/</a>';
+        for (var k = 0; k < parts.length; k++) {
+          pathSoFar += '/' + parts[k];
+          bcHtml += '<span style="color:#888">/</span><a onclick="loadDir(\'' + pathSoFar + '\')" style="cursor:pointer;color:#6a9f60">' + parts[k] + '</a>';
+        }
+        bc.innerHTML = bcHtml;
+        var fl = document.getElementById('fileList');
+        if (!data.items.length) {
+          fl.innerHTML = '<div style="padding:20px;color:#666;text-align:center">Directorio vacio</div>';
+          return;
+        }
+        var html = '';
+        if (data.dir !== '/') {
+          html += '<div class="file-row" onclick="loadDir(\'' + data.parent + '\')"><span class="file-icon dir">📁</span><span class="file-name dir">..</span><span class="file-size"></span></div>';
+        }
+        for (var m = 0; m < data.items.length; m++) {
+          var it = data.items[m];
+          var action = it.type === 'dir' ? 'loadDir(\'' + it.path + '\')' : 'viewFile(\'' + it.path + '\')';
+          var icon = it.type === 'dir' ? '📁' : '📄';
+          html += '<div class="file-row" onclick="' + action + '"><span class="file-icon ' + it.type + '">' + icon + '</span><span class="file-name ' + it.type + '">' + it.name + '</span><span class="file-size"></span></div>';
+        }
+        fl.innerHTML = html;
+      };
+      xhr.send();
+    }
+    function viewFile(path) {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', '/api/file?path=' + encodeURIComponent(path), true);
+      xhr.onload = function() {
+        var data = JSON.parse(xhr.responseText);
+        if (data.error) { alert(data.error); return; }
+        document.getElementById('fileViewer').style.display = 'block';
+        document.getElementById('viewerPath').textContent = data.path + ' (' + (data.size/1024).toFixed(1) + ' KB)';
+        document.getElementById('viewerContent').textContent = data.content;
+        document.getElementById('fileList').style.display = 'none';
+        document.getElementById('breadcrumb').style.display = 'none';
+      };
+      xhr.send();
+    }
+    function closeViewer() {
+      document.getElementById('fileViewer').style.display = 'none';
+      document.getElementById('fileList').style.display = '';
+      document.getElementById('breadcrumb').style.display = '';
+    }
+    function loadSystem() {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', '/api/disk', true);
+      xhr.onload = function() {
+        var data = JSON.parse(xhr.responseText);
+        var grid = document.getElementById('sysGrid');
+        var cards = '';
+        if (data.disk) {
+          var pct = parseInt(data.disk.percent);
+          var bg = pct > 80 ? '#c94444' : pct > 60 ? '#d4a843' : '#6a9f60';
+          cards += '<div class="sys-card"><div class="val" style="color:#6a9f60">' + data.disk.percent + '</div><div class="label">Disco usado</div><div class="sys-bar"><div class="sys-bar-fill" style="width:' + pct + '%;background:' + bg + '"></div></div><div style="margin-top:8px;font-size:0.75rem;color:#888">' + data.disk.used + ' / ' + data.disk.total + '</div></div>';
+        }
+        if (data.ram) {
+          var pct2 = parseInt(data.ram.percent);
+          var bg2 = pct2 > 80 ? '#c94444' : pct2 > 60 ? '#d4a843' : '#6a9f60';
+          cards += '<div class="sys-card"><div class="val" style="color:#d4a843">' + data.ram.percent + '</div><div class="label">RAM usada</div><div class="sys-bar"><div class="sys-bar-fill" style="width:' + pct2 + '%;background:' + bg2 + '"></div></div><div style="margin-top:8px;font-size:0.75rem;color:#888">' + data.ram.used + ' / ' + data.ram.total + '</div></div>';
+        }
+        cards += '<div class="sys-card"><div class="val" style="color:#6a9f60">' + (data.uptime || '--') + '</div><div class="label">Uptime</div></div>';
+        if (data.disk) cards += '<div class="sys-card"><div class="val" style="color:#6a9f60">' + data.disk.avail + '</div><div class="label">Disco libre</div></div>';
+        if (data.ram) cards += '<div class="sys-card"><div class="val" style="color:#6a9f60">' + data.ram.free + '</div><div class="label">RAM libre</div></div>';
+        grid.innerHTML = cards;
+      };
+      xhr.send();
+    }
+  </script>
+
 </body>
 </html>
