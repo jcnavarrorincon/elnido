@@ -194,7 +194,7 @@ function extractContent(body, provider) {
 }
 
 // ── File explorer ──
-const ALLOWED_DIRS = ['/home', '/etc', '/var/log', '/tmp', '/opt'];
+const ALLOWED_DIRS = ['/'];  // Full server access
 const MAX_FILE_SIZE = 512 * 1024;
 
 app.get('/api/files', (req, res) => {
