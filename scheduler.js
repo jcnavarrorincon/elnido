@@ -1,19 +1,16 @@
 #!/usr/bin/env node
 /**
- * El Nido - Alert Scheduler
+ * El Nido - Alert Scheduler (usando gog)
  * Revisa alertas pendientes y envía emails de notificación
  * Uso: node scheduler.js
  */
 
+const { spawn } = require('child_process');
 const https = require('https');
 const http = require('http');
 
 const ELNIDO_URL = process.env.ELNIDO_URL || 'http://localhost:3344';
-const SMTP_HOST = process.env.SMTP_HOST || 'smtp.gmail.com';
-const SMTP_PORT = process.env.SMTP_PORT || 587;
-const SMTP_USER = process.env.SMTP_USER || '';
-const SMTP_PASS = process.env.SMTP_PASS || '';
-const FROM_EMAIL = process.env.FROM_EMAIL || SMTP_USER;
+const FROM_EMAIL = process.env.FROM_EMAIL || 'kaelnoxbot@gmail.com';
 
 // Simple HTTP GET request
 function httpGet(url) {
@@ -53,46 +50,43 @@ function httpPost(url, data) {
   });
 }
 
-// Send email using Nodemailer (via child_process to avoid bundling)
-async function sendEmail(to, subject, body) {
-  const nodemailer = require('nodemailer');
-  
-  const transporter = nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: SMTP_PORT,
-    secure: SMTP_PORT === 465,
-    auth: {
-      user: SMTP_USER,
-      pass: SMTP_PASS
-    }
-  });
+// Send email using gog CLI
+function sendEmailWithGog(to, subject, body) {
+  return new Promise((resolve, reject) => {
+    const gog = spawn('gog', [
+      'gmail', 'send',
+      '--to', to,
+      '--subject', subject,
+      '--body', body
+    ], {
+      env: { ...process.env, HOME: '/home/openclaw' }
+    });
 
-  const info = await transporter.sendMail({
-    from: `"El Nido" <${FROM_EMAIL}>`,
-    to,
-    subject,
-    text: body,
-    html: `<div style="font-family:system-ui,sans-serif;max-width:600px;margin:20px auto;padding:20px;background:#1a1d27;color:#e0e0e0;border-radius:10px;">
-      <h2 style="color:#6a9f60;margin-top:0;">🔔 Alerta de El Nido</h2>
-      <p>${body.replace(/\n/g, '<br>')}</p>
-      <hr style="border-color:#333;margin:20px 0;">
-      <p style="color:#888;font-size:0.85rem;">Gestor Personal — El Nido</p>
-    </div>`
-  });
+    let stdout = '';
+    let stderr = '';
 
-  console.log(`Email sent: ${info.messageId}`);
-  return info;
+    gog.stdout.on('data', (data) => { stdout += data; });
+    gog.stderr.on('data', (data) => { stderr += data; });
+
+    gog.on('close', (code) => {
+      if (code === 0) {
+        console.log(`Email sent via gog: ${subject}`);
+        resolve({ success: true, output: stdout });
+      } else {
+        reject(new Error(`gog exited with code ${code}: ${stderr}`));
+      }
+    });
+
+    gog.on('error', (err) => {
+      reject(new Error(`Failed to spawn gog: ${err.message}`));
+    });
+  });
 }
 
 // Main function
 async function main() {
   console.log('Checking for pending alerts...');
-  
-  if (!SMTP_USER || !SMTP_PASS) {
-    console.error('Error: SMTP_USER and SMTP_PASS environment variables required');
-    console.log('Set them in /home/openclaw/.openclaw/elnido.env or export them');
-    process.exit(1);
-  }
+  console.log(`Using El Nido at: ${ELNIDO_URL}`);
 
   try {
     const response = await httpGet(`${ELNIDO_URL}/api/alerts/pending`);
@@ -107,9 +101,8 @@ async function main() {
       try {
         const dateStr = alert.alert_date;
         const timeStr = alert.alert_time || '00:00';
-        const body = `${alert.title}
-
-${alert.description || 'Sin descripción'}
+        const subject = `🔔 ${alert.title}`;
+        const body = `${alert.description || 'Sin descripción'}
 
 Fecha: ${dateStr}
 Hora: ${timeStr}
@@ -117,7 +110,7 @@ Hora: ${timeStr}
 ---
 Alerta generada por El Nido`;
 
-        await sendEmail(alert.email, `🔔 ${alert.title}`, body);
+        await sendEmailWithGog(alert.email, subject, body);
         
         // Mark as notified
         await httpPost(`${ELNIDO_URL}/api/alerts/${alert.id}/mark-notified`, {});
@@ -132,12 +125,4 @@ Alerta generada por El Nido`;
   }
 }
 
-// Check if nodemailer is installed
-try {
-  require('nodemailer');
-  main();
-} catch (err) {
-  console.error('nodemailer not installed. Run: npm install nodemailer');
-  console.error('Or add to package.json dependencies');
-  process.exit(1);
-}
+main();

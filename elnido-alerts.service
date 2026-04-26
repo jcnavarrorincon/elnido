@@ -7,7 +7,7 @@ Type=oneshot
 User=openclaw
 Environment=HOME=/home/openclaw
 Environment=XDG_RUNTIME_DIR=/run/user/1000
-EnvironmentFile=/home/openclaw/.openclaw/elnido.env
+Environment=ELNIDO_URL=http://localhost:3344
 WorkingDirectory=/home/openclaw/elnido
 ExecStart=/usr/bin/node /home/openclaw/elnido/scheduler.js
 
