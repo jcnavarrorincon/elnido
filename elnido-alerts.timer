@@ -1,0 +1,10 @@
+[Unit]
+Description=El Nido Alert Timer
+Requires=elnido-alerts.service
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+
+[Install]
+WantedBy=timers.target

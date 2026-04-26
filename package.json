@@ -11,6 +11,8 @@
   "author": "jcnavarrorincon",
   "license": "MIT",
   "dependencies": {
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "sqlite3": "^5.1.7",
+    "nodemailer": "^6.9.14"
   }
 }

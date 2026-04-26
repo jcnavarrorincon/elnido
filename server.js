@@ -4,12 +4,101 @@ const fs = require('fs');
 const os = require('os');
 const https = require('https');
 const http = require('http');
+const sqlite3 = require('sqlite3').verbose();
 
 const app = express();
 const PORT = 3344;
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
+
+// ── SQLite Database for Alerts ──
+const DB_PATH = path.join(__dirname, 'data', 'alerts.db');
+fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+
+const db = new sqlite3.Database(DB_PATH);
+db.serialize(() => {
+  db.run(`CREATE TABLE IF NOT EXISTS alerts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    description TEXT,
+    alert_date DATE NOT NULL,
+    alert_time TIME,
+    email TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    notified BOOLEAN DEFAULT 0,
+    notified_at DATETIME
+  )`);
+});
+
+// ── Alert API Endpoints ──
+app.get('/api/alerts', (req, res) => {
+  db.all('SELECT * FROM alerts ORDER BY alert_date, alert_time', [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+app.post('/api/alerts', (req, res) => {
+  const { title, description, alert_date, alert_time, email } = req.body;
+  if (!title || !alert_date || !email) {
+    return res.status(400).json({ error: 'title, alert_date, and email required' });
+  }
+  db.run(
+    'INSERT INTO alerts (title, description, alert_date, alert_time, email) VALUES (?, ?, ?, ?, ?)',
+    [title, description || '', alert_date, alert_time || '00:00', email],
+    function(err) {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ id: this.lastID, message: 'Alert created' });
+    }
+  );
+});
+
+app.put('/api/alerts/:id', (req, res) => {
+  const { title, description, alert_date, alert_time, email } = req.body;
+  db.run(
+    'UPDATE alerts SET title = ?, description = ?, alert_date = ?, alert_time = ?, email = ? WHERE id = ?',
+    [title, description, alert_date, alert_time, email, req.params.id],
+    function(err) {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ updated: this.changes, message: 'Alert updated' });
+    }
+  );
+});
+
+app.delete('/api/alerts/:id', (req, res) => {
+  db.run('DELETE FROM alerts WHERE id = ?', [req.params.id], function(err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ deleted: this.changes, message: 'Alert deleted' });
+  });
+});
+
+// ── Pending alerts endpoint (for scheduler) ──
+app.get('/api/alerts/pending', (req, res) => {
+  const now = new Date().toISOString();
+  db.all(
+    `SELECT * FROM alerts 
+     WHERE notified = 0 
+     AND datetime(alert_date || ' ' || COALESCE(alert_time, '00:00')) <= datetime(?)
+     ORDER BY alert_date, alert_time`,
+    [now],
+    (err, rows) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json(rows);
+    }
+  );
+});
+
+app.post('/api/alerts/:id/mark-notified', (req, res) => {
+  db.run(
+    'UPDATE alerts SET notified = 1, notified_at = CURRENT_TIMESTAMP WHERE id = ?',
+    [req.params.id],
+    function(err) {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ updated: this.changes });
+    }
+  );
+});
 
 // ── Load provider config from OpenClaw ──
 function loadProviders() {

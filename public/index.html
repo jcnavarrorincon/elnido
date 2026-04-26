@@ -18,6 +18,23 @@
     h1 span { color: #6a9f60; }
     .subtitle { color: #888; font-size: 0.9rem; margin-bottom: 32px; }
 
+    /* Alerts */
+    .alert-form { display: grid; gap: 12px; margin-bottom: 24px; }
+    .alert-form input, .alert-form textarea { 
+      background: #1a1d27; border: 1px solid #333; border-radius: 6px; 
+      padding: 10px 14px; color: #e0e0e0; font-size: 0.9rem;
+    }
+    .alert-form input:focus, .alert-form textarea:focus { outline: none; border-color: #6a9f60; }
+    .alert-form input::placeholder, .alert-form textarea::placeholder { color: #666; }
+    .alert-row { display: grid; grid-template-columns: 1fr auto auto auto auto; gap: 12px; align-items: center; padding: 12px 16px; border-bottom: 1px solid #22252f; }
+    .alert-row:hover { background: #22252f; }
+    .alert-row:last-child { border-bottom: none; }
+    .alert-title { font-weight: 600; color: #e0e0e0; }
+    .alert-date { color: #888; font-size: 0.85rem; }
+    .alert-status { font-size: 0.75rem; padding: 2px 8px; border-radius: 10px; }
+    .alert-status.pending { background: #332a1a; color: #d4a843; }
+    .alert-status.sent { background: #1a3320; color: #6a9f60; }
+
     /* Tabs */
     .tabs { display: flex; gap: 0; margin-bottom: 24px; border-bottom: 2px solid #222; }
     .tab { padding: 10px 20px; cursor: pointer; font-size: 0.9rem; color: #888; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
@@ -168,6 +185,7 @@
     <div class="tabs">
       <div class="tab active" onclick="switchTab('models')">🔍 Modelos</div>
       <div class="tab" onclick="switchTab('files')">📁 Archivos</div>
+      <div class="tab" onclick="switchTab('alerts')">🔔 Alertas</div>
       <div class="tab" onclick="switchTab('system')">💻 Sistema</div>
     </div>
 
@@ -202,6 +220,27 @@
           </div>
           <pre id="viewerContent"></pre>
         </div>
+      </div>
+    </div>
+
+    <!-- Tab: Alerts -->
+    <div class="tab-content" id="tab-alerts">
+      <div class="config-section">
+        <h2>Nueva Alerta</h2>
+        <form class="alert-form" id="alertForm">
+          <input type="text" id="alertTitle" placeholder="Título de la alerta" required>
+          <textarea id="alertDesc" placeholder="Descripción (opcional)" rows="2"></textarea>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <input type="date" id="alertDate" required>
+            <input type="time" id="alertTime" value="09:00">
+          </div>
+          <input type="email" id="alertEmail" placeholder="Email de notificación" required>
+          <button type="submit" class="btn-test btn-quick" style="justify-self:start">➕ Crear Alerta</button>
+        </form>
+      </div>
+      <div class="config-section">
+        <h2>Alertas Programadas</h2>
+        <div id="alertsList"></div>
       </div>
     </div>
 
@@ -442,13 +481,84 @@
     // ── Tabs ──
     function switchTab(name) {
       var tabs = document.querySelectorAll('.tab');
-      var names = ['models','files','system'];
+      var names = ['models','files','alerts','system'];
       for (var i = 0; i < tabs.length; i++) tabs[i].classList.toggle('active', names[i] === name);
       var contents = document.querySelectorAll('.tab-content');
       for (var j = 0; j < contents.length; j++) contents[j].classList.remove('active');
       document.getElementById('tab-' + name).classList.add('active');
       if (name === 'files') loadDir('/home');
+      if (name === 'alerts') loadAlerts();
       if (name === 'system') loadSystem();
+    }
+
+    // ── Alerts ──
+    function loadAlerts() {
+      fetch('/api/alerts')
+        .then(r => r.json())
+        .then(data => {
+          const el = document.getElementById('alertsList');
+          if (!data.length) {
+            el.innerHTML = '<div style="padding:20px;color:#666;text-align:center">No hay alertas programadas</div>';
+            return;
+          }
+          el.innerHTML = data.map(a => {
+            const dateStr = new Date(a.alert_date).toLocaleDateString('es-ES');
+            const timeStr = a.alert_time || '';
+            const statusClass = a.notified ? 'sent' : 'pending';
+            const statusText = a.notified ? '✓ Enviada' : '⏳ Pendiente';
+            return `<div class="alert-row">
+              <div>
+                <div class="alert-title">${a.title}</div>
+                <div style="font-size:0.8rem;color:#888">${a.description || ''}</div>
+                <div style="font-size:0.75rem;color:#666;margin-top:4px">${a.email}</div>
+              </div>
+              <div class="alert-date">${dateStr} ${timeStr}</div>
+              <span class="alert-status ${statusClass}">${statusText}</span>
+              <button class="btn-sm" onclick="deleteAlert(${a.id})" ${a.notified ? 'disabled' : ''}>🗑️</button>
+            </div>`;
+          }).join('');
+        })
+        .catch(err => {
+          document.getElementById('alertsList').innerHTML = '<div style="padding:20px;color:#c94444">Error cargando alertas</div>';
+        });
+    }
+
+    document.getElementById('alertForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = {
+        title: document.getElementById('alertTitle').value,
+        description: document.getElementById('alertDesc').value,
+        alert_date: document.getElementById('alertDate').value,
+        alert_time: document.getElementById('alertTime').value,
+        email: document.getElementById('alertEmail').value
+      };
+      try {
+        const res = await fetch('/api/alerts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        if (res.ok) {
+          document.getElementById('alertForm').reset();
+          document.getElementById('alertTime').value = '09:00';
+          loadAlerts();
+        } else {
+          alert('Error creando alerta');
+        }
+      } catch (err) {
+        alert('Error de conexión');
+      }
+    });
+
+    async function deleteAlert(id) {
+      if (!confirm('¿Eliminar esta alerta?')) return;
+      try {
+        const res = await fetch(`/api/alerts/${id}`, { method: 'DELETE' });
+        if (res.ok) loadAlerts();
+        else alert('Error eliminando alerta');
+      } catch (err) {
+        alert('Error de conexión');
+      }
     }
 
     // ── File explorer ──
