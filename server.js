@@ -243,5 +243,5 @@ app.get('/api/disk', (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Model Health dashboard on http://localhost:${PORT}`);
+  console.log(`El Nido corriendo en http://localhost:${PORT}`);
 });

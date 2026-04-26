@@ -1,14 +1,15 @@
 {
-  "name": "model-health",
+  "name": "elnido",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Gestor Personal — Dashboard privado para administrar modelos LLM, archivos y sistema",
+  "main": "server.js",
   "scripts": {
+    "start": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": ["dashboard", "llm", "personal", "gestor"],
+  "author": "jcnavarrorincon",
+  "license": "MIT",
   "dependencies": {
     "express": "^5.2.1"
   }

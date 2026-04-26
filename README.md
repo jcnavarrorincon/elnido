@@ -1,10 +1,10 @@
-# Model Health 🩺
+# El Nido 🪺
 
-Dashboard ligero para testear la disponibilidad y velocidad de modelos LLM desde un solo lugar.
+Gestor Personal — Dashboard privado para administrar modelos LLM, archivos y sistema desde un solo lugar.
 
 ## ¿Qué hace?
 
-- Envía una petición simple ("Responde solo OK") a cada modelo configurado
+- Envía peticiones de prueba a cada modelo configurado
 - Mide el tiempo de respuesta
 - Muestra resultados con código de color: 🟢 OK / 🔴 Fail
 - Las API keys se guardan **solo en el navegador** (localStorage), nunca en el servidor
@@ -21,8 +21,8 @@ Dashboard ligero para testear la disponibilidad y velocidad de modelos LLM desde
 
 ```bash
 # Clonar
-git clone https://github.com/jcnavarrorincon/model-health.git
-cd model-health
+git clone https://github.com/jcnavarrorincon/elnido.git
+cd elnido
 
 # Instalar
 npm install
@@ -36,20 +36,20 @@ Abre `http://localhost:3344` en tu navegador.
 ## Servicio systemd
 
 ```bash
-sudo cp model-health.service /etc/systemd/system/
+sudo cp elnido.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now model-health
 ```
 
-Contenido de `model-health.service`:
+Contenido de `elnido.service`:
 
 ```ini
 [Unit]
-Description=Model Health Dashboard
+Description=El Nido - Gestor Personal
 After=network.target
 
 [Service]
-ExecStart=/usr/bin/node /home/USER/model-health/server.js
+ExecStart=/usr/bin/node /home/USER/elnido/server.js
 Restart=on-failure
 RestartSec=5
 User=USER
