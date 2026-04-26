@@ -1,0 +1,10 @@
+[Unit]
+Description=El Nido - Calendar Weekly Timer
+Requires=calendar-weekly.service
+
+[Timer]
+OnCalendar=Sun *-*-* 21:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,10 @@
+[Unit]
+Description=El Nido - Calendar Daily Timer
+Requires=calendar-daily.service
+
+[Timer]
+OnCalendar=*-*-* 06:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

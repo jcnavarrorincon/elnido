@@ -226,7 +226,29 @@
     <!-- Tab: Alerts -->
     <div class="tab-content" id="tab-alerts">
       <div class="config-section">
-        <h2>Nueva Alerta</h2>
+        <h2>📬 Resumen de Calendario</h2>
+        <div style="background:#1a1d27;padding:16px;border-radius:8px;margin-bottom:16px">
+          <p style="margin-bottom:12px;color:#888">Configuración actual:</p>
+          <div style="display:grid;gap:12px">
+            <div class="alert-row" style="border-bottom:none;padding:8px 0">
+              <span>📅 Diario (6:00)</span>
+              <span class="alert-status pending">Citas del día</span>
+              <span>jcnavarrorincon@gmail.com</span>
+            </div>
+            <div class="alert-row" style="border-bottom:none;padding:8px 0">
+              <span>📅 Semanal (Dom 21:00)</span>
+              <span class="alert-status pending">Citas de la semana</span>
+              <span>jcnavarrorincon@gmail.com</span>
+            </div>
+          </div>
+          <p style="margin-top:16px;font-size:0.8rem;color:#666">
+            Los timers están gestionados por systemd. Última ejecución visible en logs.
+          </p>
+        </div>
+      </div>
+      
+      <div class="config-section">
+        <h2>Nueva Alerta Manual</h2>
         <form class="alert-form" id="alertForm">
           <input type="text" id="alertTitle" placeholder="Título de la alerta" required>
           <textarea id="alertDesc" placeholder="Descripción (opcional)" rows="2"></textarea>
@@ -238,6 +260,7 @@
           <button type="submit" class="btn-test btn-quick" style="justify-self:start">➕ Crear Alerta</button>
         </form>
       </div>
+      
       <div class="config-section">
         <h2>Alertas Programadas</h2>
         <div id="alertsList"></div>

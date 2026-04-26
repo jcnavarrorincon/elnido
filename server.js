@@ -100,6 +100,143 @@ app.post('/api/alerts/:id/mark-notified', (req, res) => {
   );
 });
 
+// ── Calendar digest endpoint (for scheduler) ──
+app.get('/api/calendar/digest', async (req, res) => {
+  const { mode, email } = req.query; // mode: 'daily' | 'weekly'
+  if (!mode || !email) {
+    return res.status(400).json({ error: 'mode and email required' });
+  }
+
+  const { spawn } = require('child_process');
+  
+  // Calculate date range
+  const now = new Date();
+  let fromDate, toDate, subject, title;
+  
+  if (mode === 'daily') {
+    // Today
+    fromDate = new Date(now);
+    fromDate.setHours(0, 0, 0, 0);
+    toDate = new Date(now);
+    toDate.setDate(toDate.getDate() + 1);
+    subject = `📅 Citas para hoy - ${now.toLocaleDateString('es-ES')}`;
+    title = 'Citas de hoy';
+  } else if (mode === 'weekly') {
+    // Next week (Monday to Sunday)
+    const dayOfWeek = now.getDay(); // 0 = Sunday
+    const daysUntilNextMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
+    fromDate = new Date(now);
+    fromDate.setDate(now.getDate() + daysUntilNextMonday);
+    fromDate.setHours(0, 0, 0, 0);
+    toDate = new Date(fromDate);
+    toDate.setDate(toDate.getDate() + 7);
+    subject = `📅 Citas de la semana - ${fromDate.toLocaleDateString('es-ES')}`;
+    title = 'Citas de la semana';
+  } else {
+    return res.status(400).json({ error: 'mode must be daily or weekly' });
+  }
+
+  const fromIso = fromDate.toISOString();
+  const toIso = toDate.toISOString();
+
+  try {
+    // Query calendar using gog
+    const events = await new Promise((resolve, reject) => {
+      const gog = spawn('gog', [
+        'calendar', 'events', 'primary',
+        '--from', fromIso,
+        '--to', toIso,
+        '--json'
+      ], {
+        env: { ...process.env, HOME: '/home/openclaw' }
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      gog.stdout.on('data', (data) => { stdout += data; });
+      gog.stderr.on('data', (data) => { stderr += data; });
+
+      gog.on('close', (code) => {
+        if (code === 0) {
+          try {
+            const data = JSON.parse(stdout);
+            resolve(data.events || []);
+          } catch (e) {
+            reject(new Error('Failed to parse gog output'));
+          }
+        } else {
+          reject(new Error(`gog exited with code ${code}: ${stderr}`));
+        }
+      });
+
+      gog.on('error', (err) => {
+        reject(new Error(`Failed to spawn gog: ${err.message}`));
+      });
+    });
+
+    // Format email body
+    let bodyText = `${title}\n\n`;
+    let bodyHtml = `<h2>${title}</h2><ul>`;
+    
+    if (events.length === 0) {
+      bodyText += 'No hay citas programadas.';
+      bodyHtml += '<li>No hay citas programadas.</li>';
+    } else {
+      events.forEach(evt => {
+        const start = new Date(evt.start);
+        const timeStr = start.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+        const dateStr = start.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
+        const desc = evt.description || '';
+        
+        bodyText += `📅 ${dateStr} ${timeStr} - ${evt.summary}\n`;
+        if (desc) bodyText += `   ${desc}\n`;
+        bodyText += '\n';
+        
+        bodyHtml += `<li><strong>${dateStr} ${timeStr}</strong> - ${evt.summary}`;
+        if (desc) bodyHtml += `<br><em>${desc}</em>`;
+        bodyHtml += '</li>';
+      });
+    }
+    
+    bodyHtml += '</ul><p>— El Nido</p>';
+
+    // Send email
+    await new Promise((resolve, reject) => {
+      const gog = spawn('gog', [
+        'gmail', 'send',
+        '--to', email,
+        '--subject', subject,
+        '--body-html', bodyHtml
+      ], {
+        env: { ...process.env, HOME: '/home/openclaw' }
+      });
+
+      let stderr = '';
+      gog.stderr.on('data', (data) => { stderr += data; });
+
+      gog.on('close', (code) => {
+        if (code === 0) resolve();
+        else reject(new Error(`Failed to send email: ${stderr}`));
+      });
+
+      gog.on('error', reject);
+    });
+
+    res.json({ 
+      sent: true, 
+      mode, 
+      eventCount: events.length,
+      from: fromIso,
+      to: toIso
+    });
+
+  } catch (err) {
+    console.error('Calendar digest error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Load provider config from OpenClaw ──
 function loadProviders() {
   try {

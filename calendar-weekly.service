@@ -1,0 +1,13 @@
+[Unit]
+Description=El Nido - Calendar Weekly Digest
+After=network.target elnido.service
+
+[Service]
+Type=oneshot
+User=openclaw
+Environment=HOME=/home/openclaw
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+Environment=ELNIDO_URL=http://localhost:3344
+Environment=DIGEST_EMAIL=jcnavarrorincon@gmail.com
+WorkingDirectory=/home/openclaw/elnido
+ExecStart=/usr/bin/node /home/openclaw/elnido/calendar-weekly.js
